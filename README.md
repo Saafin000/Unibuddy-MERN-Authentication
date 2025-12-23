@@ -1,8 +1,3 @@
-<h1 align="center">Advanced Auth System 🔒 </h1>
-
-[Live App](https://advanced-auth-system.onrender.com/)
-
-[Mailtrap | Used in this Project](https://mailtrap.io/home)
 
 ---
 ![Untitled-2024-08-19-2139](https://github.com/user-attachments/assets/4fd4277d-0441-475a-bfcd-cab976b60e7f)
