@@ -53,11 +53,16 @@ function App() {
 
       <Routes>
         <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+
         <Route path="/signup" element={<RedirectAuthenticatedUser><SignUpPage /></RedirectAuthenticatedUser>} />
         <Route path="/login" element={<RedirectAuthenticatedUser><LoginPage /></RedirectAuthenticatedUser>} />
+
         <Route path="/verify-email" element={<EmailVerificationPage />} />
-        <Route path="/forgot-password" element={<RedirectAuthenticatedUser><ForgotPasswordPage /></RedirectAuthenticatedUser>} />
-        <Route path="/reset-password/:token" element={<RedirectAuthenticatedUser><ResetPasswordPage /></RedirectAuthenticatedUser>} />
+
+        {/* ✅ FIXED HERE */}
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
+
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
 

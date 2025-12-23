@@ -126,4 +126,32 @@ export const useAuthStore = create((set) => ({
       });
     }
   },
+  forgotPassword: async (email) => {
+    try {
+      set({ isLoading: true });
+
+      const res = await axios.post(`${API_URL}/forgot-password`, { email });
+
+      set({ isLoading: false });
+      return res.data;
+    } catch (error) {
+      set({ isLoading: false });
+      throw error; // 🔥 VERY IMPORTANT
+    }
+  },
+  resetPassword: async (token, password) => {
+    try {
+      set({ isLoading: true });
+
+      const res = await axios.post(`${API_URL}/reset-password/${token}`, {
+        password,
+      });
+
+      set({ isLoading: false });
+      return res.data;
+    } catch (error) {
+      set({ isLoading: false });
+      throw error; // 🔥 VERY IMPORTANT
+    }
+  },
 }));
