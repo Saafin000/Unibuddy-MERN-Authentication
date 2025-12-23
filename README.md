@@ -32,7 +32,7 @@ CLIENT_URL= http://localhost:5173
 
 ### Clone the app
 ```shell
-git clone https://github.com/yourSrijit/Advanced-MERN-Authentication.git
+git clone https://github.com/Saafin000/Unibuddy-MERN-Authentication.git
 cd Advanced-MERN-Authentication
 ```
 ### Build the app
@@ -45,5 +45,3 @@ npm run build
 ```shell
 npm run start
 ```
-
-[Connect With Me](https://www.linkedin.com/in/yoursrijit/) 🚀
