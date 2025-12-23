@@ -2,9 +2,6 @@
 ---
 ![Untitled-2024-08-19-2139](https://github.com/user-attachments/assets/4fd4277d-0441-475a-bfcd-cab976b60e7f)
 
-![ezgif-3-d40924d6e0](https://github.com/user-attachments/assets/f9845e28-e6c5-4822-8ac9-1975f5f5a4a5)
-
-
 
 
 
