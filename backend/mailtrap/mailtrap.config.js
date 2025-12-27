@@ -14,5 +14,5 @@ export const transporter = nodemailer.createTransport({
 
 export const sender = {
   email: "mailtrap@demomailtrap.com",
-  name: "Srijit Bera",
+  name: "Saafin",
 };
