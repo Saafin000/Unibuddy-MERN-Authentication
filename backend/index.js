@@ -8,6 +8,7 @@ import { connectDB } from "./db/connectDB.js";
 
 import authRoutes from "./routes/auth.route.js";
 import studentRoutes from "./routes/student.route.js";
+import userRoutes from './routes/user.routes.js';
 
 dotenv.config();
 
@@ -23,6 +24,8 @@ app.use(cookieParser());
 
 app.use("/api/auth", authRoutes);
 app.use("/api/students", studentRoutes);
+// Add this with your other routes
+app.use('/api/users', userRoutes);
 
 app.listen(PORT, () => {
   connectDB();

@@ -1,19 +1,30 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
+import "./AdminPanel.css";
 
 export default function AdminPanel() {
   const [students, setStudents] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     name: "",
     email: "",
+    password: "",
     rollNo: "",
     department: "",
     year: "",
+    fatherName: "",
+    motherName: "",
+    contactNumber: "",
+    address: "",
+    dateOfBirth: "",
+    gender: "",
   });
-  const [editId, setEditId] = useState(null); // for editing
+  const [editId, setEditId] = useState(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   // Fetch all students from backend
   const fetchStudents = async () => {
+    setLoading(true);
     try {
       const res = await axios.get("http://localhost:5000/api/students", {
         withCredentials: true,
@@ -22,6 +33,8 @@ export default function AdminPanel() {
     } catch (err) {
       console.error("Error fetching students:", err);
       alert(err.response?.data?.message || "Failed to fetch students");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -30,52 +43,122 @@ export default function AdminPanel() {
   }, []);
 
   // Add or update student
-  const submit = async () => {
+  const submit = async (e) => {
+    e.preventDefault();
+    
+    // Validation
+    if (!form.name || !form.email || !form.rollNo || !form.department || !form.year || !form.fatherName || !form.motherName || !form.contactNumber) {
+      alert("Please fill all required fields");
+      return;
+    }
+
+    // Password required only for new student
+    if (!editId && !form.password) {
+      alert("Password is required for new student");
+      return;
+    }
+
+    setLoading(true);
     try {
       if (editId) {
-        // Update student
-        await axios.put(`http://localhost:5000/api/students/${editId}`, form, {
+        // Update student - don't send password if empty
+        const updateData = { ...form };
+        if (!updateData.password) {
+          delete updateData.password;
+        }
+        await axios.put(`http://localhost:5000/api/students/${editId}`, updateData, {
           withCredentials: true,
         });
+        alert("Student updated successfully!");
         setEditId(null);
       } else {
         // Add student
         await axios.post("http://localhost:5000/api/students", form, {
           withCredentials: true,
         });
+        alert("Student added successfully!");
       }
-      setForm({ name: "", email: "", rollNo: "", department: "", year: "" });
+      setForm({ 
+        name: "", 
+        email: "", 
+        password: "",
+        rollNo: "", 
+        department: "", 
+        year: "",
+        fatherName: "",
+        motherName: "",
+        contactNumber: "",
+        address: "",
+        dateOfBirth: "",
+        gender: "",
+      });
       fetchStudents();
     } catch (err) {
       console.error(err);
       alert(err.response?.data?.message || "Operation failed");
+    } finally {
+      setLoading(false);
     }
   };
 
   // Delete student
   const remove = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this student?")) {
+      return;
+    }
+    
+    setLoading(true);
     try {
       await axios.delete(`http://localhost:5000/api/students/${id}`, {
         withCredentials: true,
       });
+      alert("Student deleted successfully!");
       fetchStudents();
     } catch (err) {
       console.error(err);
       alert(err.response?.data?.message || "Delete failed");
+    } finally {
+      setLoading(false);
     }
   };
 
   // Edit student
   const edit = (student) => {
     setForm({
-      name: student.name,
-      email: student.email,
-      rollNo: student.rollNo,
-      department: student.department,
-      year: student.year,
+      name: student.name || "",
+      email: student.email || "",
+      password: "", // Don't populate password for security
+      rollNo: student.rollNo || "",
+      department: student.department || "",
+      year: student.year || "",
+      fatherName: student.fatherName || "",
+      motherName: student.motherName || "",
+      contactNumber: student.contactNumber || "",
+      address: student.address || "",
+      dateOfBirth: student.dateOfBirth ? student.dateOfBirth.split('T')[0] : "",
+      gender: student.gender || "",
     });
     setEditId(student._id);
-    window.scrollTo({ top: 0, behavior: "smooth" }); // scroll to top for editing
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  // Cancel edit
+  const cancelEdit = () => {
+    setEditId(null);
+    setForm({ 
+      name: "", 
+      email: "", 
+      password: "",
+      rollNo: "", 
+      department: "", 
+      year: "",
+      fatherName: "",
+      motherName: "",
+      contactNumber: "",
+      address: "",
+      dateOfBirth: "",
+      gender: "",
+    });
   };
 
   // Logout
@@ -102,172 +185,195 @@ export default function AdminPanel() {
       </div>
 
       <div className="card form-card">
-        <h3>{editId ? "Edit Student" : "Add Student"}</h3>
-        <div className="form-group">
-          {Object.keys(form).map((key) => (
-            <input
-              key={key}
-              placeholder={key}
-              value={form[key]}
-              onChange={(e) => setForm({ ...form, [key]: e.target.value })}
-              className="form-input"
-            />
-          ))}
-        </div>
-        <button className="btn submit-btn" onClick={submit}>
-          {editId ? "Update Student" : "Add Student"}
-        </button>
+        <h3>{editId ? "Edit Student" : "Add New Student"}</h3>
+        <form onSubmit={submit}>
+          <div className="form-grid">
+            {/* Personal Information */}
+            <div className="form-section">
+              <h4>Personal Information</h4>
+              <input
+                type="text"
+                placeholder="Full Name *"
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                className="form-input"
+                required
+              />
+              <input
+                type="email"
+                placeholder="Email *"
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                className="form-input"
+                required
+              />
+              <div className="password-field">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  placeholder={editId ? "Password (leave blank to keep current)" : "Password *"}
+                  value={form.password}
+                  onChange={(e) => setForm({ ...form, password: e.target.value })}
+                  className="form-input"
+                  required={!editId}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="toggle-password"
+                >
+                  {showPassword ? "👁️" : "👁️‍🗨️"}
+                </button>
+              </div>
+              <input
+                type="date"
+                placeholder="Date of Birth"
+                value={form.dateOfBirth}
+                onChange={(e) => setForm({ ...form, dateOfBirth: e.target.value })}
+                className="form-input"
+              />
+              <select
+                value={form.gender}
+                onChange={(e) => setForm({ ...form, gender: e.target.value })}
+                className="form-input"
+              >
+                <option value="">Select Gender</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+
+            {/* Academic Information */}
+            <div className="form-section">
+              <h4>Academic Information</h4>
+              <input
+                type="text"
+                placeholder="Roll Number *"
+                value={form.rollNo}
+                onChange={(e) => setForm({ ...form, rollNo: e.target.value })}
+                className="form-input"
+                required
+              />
+              <input
+                type="text"
+                placeholder="Department *"
+                value={form.department}
+                onChange={(e) => setForm({ ...form, department: e.target.value })}
+                className="form-input"
+                required
+              />
+              <select
+                value={form.year}
+                onChange={(e) => setForm({ ...form, year: e.target.value })}
+                className="form-input"
+                required
+              >
+                <option value="">Select Year *</option>
+                <option value="1">1st Year</option>
+                <option value="2">2nd Year</option>
+                <option value="3">3rd Year</option>
+                <option value="4">4th Year</option>
+              </select>
+            </div>
+
+            {/* Family & Contact Information */}
+            <div className="form-section">
+              <h4>Family & Contact Information</h4>
+              <input
+                type="text"
+                placeholder="Father's Name *"
+                value={form.fatherName}
+                onChange={(e) => setForm({ ...form, fatherName: e.target.value })}
+                className="form-input"
+                required
+              />
+              <input
+                type="text"
+                placeholder="Mother's Name *"
+                value={form.motherName}
+                onChange={(e) => setForm({ ...form, motherName: e.target.value })}
+                className="form-input"
+                required
+              />
+              <input
+                type="tel"
+                placeholder="Contact Number *"
+                value={form.contactNumber}
+                onChange={(e) => setForm({ ...form, contactNumber: e.target.value })}
+                className="form-input"
+                required
+              />
+              <textarea
+                placeholder="Address"
+                value={form.address}
+                onChange={(e) => setForm({ ...form, address: e.target.value })}
+                className="form-input"
+                rows="3"
+              />
+            </div>
+          </div>
+
+          <div className="form-actions">
+            <button type="submit" className="btn submit-btn" disabled={loading}>
+              {loading ? "Processing..." : editId ? "Update Student" : "Add Student"}
+            </button>
+            {editId && (
+              <button type="button" className="btn cancel-btn" onClick={cancelEdit}>
+                Cancel
+              </button>
+            )}
+          </div>
+        </form>
       </div>
 
-      <table className="student-table">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Email</th>
-            <th>Roll</th>
-            <th>Dept</th>
-            <th>Year</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {students.map((s) => (
-            <tr key={s._id}>
-              <td>{s.name}</td>
-              <td>{s.email}</td>
-              <td>{s.rollNo}</td>
-              <td>{s.department}</td>
-              <td>{s.year}</td>
-              <td>
-                <button className="btn edit-btn" onClick={() => edit(s)}>
-                  ✏️
-                </button>{" "}
-                <button className="btn delete-btn" onClick={() => remove(s._id)}>
-                  ❌
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-
-      {/* Embedded CSS */}
-      <style>{`
-        .admin-container {
-          padding: 40px;
-          font-family: 'Poppins', sans-serif;
-          background: #f4f7fa;
-          min-height: 100vh;
-        }
-        .admin-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 30px;
-        }
-        .logout-btn {
-          background: #ff5f5f;
-          color: #fff;
-          border: none;
-          padding: 10px 20px;
-          border-radius: 8px;
-          cursor: pointer;
-          transition: 0.3s;
-        }
-        .logout-btn:hover {
-          background: #ff2f2f;
-          transform: scale(1.05);
-        }
-        .card.form-card {
-          background: #fff;
-          padding: 30px;
-          border-radius: 15px;
-          box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-          margin-bottom: 40px;
-          transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-        .card.form-card:hover {
-          transform: translateY(-5px);
-          box-shadow: 0 15px 40px rgba(0,0,0,0.15);
-        }
-        .form-group {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 15px;
-          margin-bottom: 20px;
-        }
-        .form-input {
-          flex: 1 1 180px;
-          padding: 10px;
-          border-radius: 8px;
-          border: 1px solid #ccc;
-          transition: 0.3s;
-        }
-        .form-input:focus {
-          border-color: #667eea;
-          outline: none;
-          box-shadow: 0 0 8px rgba(102,126,234,0.3);
-        }
-        .btn {
-          cursor: pointer;
-          border: none;
-          border-radius: 10px;
-          padding: 10px 20px;
-          font-weight: 500;
-          transition: 0.3s;
-        }
-        .submit-btn {
-          background: linear-gradient(135deg, #667eea, #764ba2);
-          color: #fff;
-        }
-        .submit-btn:hover {
-          transform: scale(1.05);
-          box-shadow: 0 8px 20px rgba(102,126,234,0.4);
-        }
-        .edit-btn {
-          background: #fbbf24;
-          color: #fff;
-          padding: 5px 10px;
-          margin-right: 5px;
-        }
-        .edit-btn:hover {
-          background: #f59e0b;
-          transform: scale(1.1);
-        }
-        .delete-btn {
-          background: #ff5f5f;
-          color: #fff;
-          padding: 5px 10px;
-        }
-        .delete-btn:hover {
-          background: #ff2f2f;
-          transform: scale(1.1);
-        }
-        .student-table {
-          width: 100%;
-          border-collapse: collapse;
-          background: #fff;
-          border-radius: 10px;
-          overflow: hidden;
-          box-shadow: 0 10px 20px rgba(0,0,0,0.05);
-        }
-        .student-table th,
-        .student-table td {
-          padding: 12px 15px;
-          text-align: left;
-        }
-        .student-table th {
-          background: #667eea;
-          color: #fff;
-        }
-        .student-table tbody tr:nth-child(even) {
-          background: #f9f9f9;
-        }
-        .student-table tbody tr:hover {
-          background: #e0e7ff;
-          transition: 0.3s;
-        }
-      `}</style>
+      <div className="table-container">
+        <h3>All Students ({students.length})</h3>
+        {loading ? (
+          <div className="loading">Loading...</div>
+        ) : students.length === 0 ? (
+          <div className="no-data">No students found. Add your first student above.</div>
+        ) : (
+          <div className="table-wrapper">
+            <table className="student-table">
+              <thead>
+                <tr>
+                  <th>Roll No</th>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Department</th>
+                  <th>Year</th>
+                  <th>Contact</th>
+                  <th>Father's Name</th>
+                  <th>Mother's Name</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {students.map((s) => (
+                  <tr key={s._id}>
+                    <td>{s.rollNo}</td>
+                    <td>{s.name}</td>
+                    <td>{s.email}</td>
+                    <td>{s.department}</td>
+                    <td>{s.year}</td>
+                    <td>{s.contactNumber}</td>
+                    <td>{s.fatherName}</td>
+                    <td>{s.motherName}</td>
+                    <td className="action-buttons">
+                      <button className="btn edit-btn" onClick={() => edit(s)} title="Edit">
+                        ✏️
+                      </button>
+                      <button className="btn delete-btn" onClick={() => remove(s._id)} title="Delete">
+                        ❌
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

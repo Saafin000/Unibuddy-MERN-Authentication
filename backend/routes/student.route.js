@@ -1,155 +1,165 @@
-// backend/routes/student.route.js
-import express from "express";
-import { Student } from "../models/student.model.js";
-import { verifyToken } from "../middleware/verifyToken.js";
 import { User } from "../models/user.model.js";
+import bcrypt from "bcryptjs";
 
-const router = express.Router();
-
-// Middleware to check if user is admin
-const isAdmin = async (req, res, next) => {
+/* ============================
+   GET ALL USERS (ADMIN)
+============================ */
+export const getAllUsers = async (req, res) => {
   try {
-    const user = await User.findById(req.userId);
-    if (!user || user.role !== 'ADMIN') {
-      return res.status(403).json({ 
-        success: false, 
-        message: "Access denied. Admin only." 
-      });
-    }
-    next();
+    const users = await User.find()
+      .select("-password -verificationToken -resetPasswordToken")
+      .sort({ createdAt: -1 });
+
+    res.status(200).json(users);
   } catch (error) {
-    res.status(500).json({ success: false, message: "Server error" });
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
-// Get all students (Admin only)
-router.get("/", verifyToken, isAdmin, async (req, res) => {
+/* ============================
+   CREATE USER (ADMIN)
+============================ */
+export const createUser = async (req, res) => {
   try {
-    const students = await Student.find().sort({ createdAt: -1 });
-    res.status(200).json(students);
-  } catch (error) {
-    res.status(500).json({ 
-      success: false, 
-      message: error.message 
-    });
-  }
-});
-
-// Add new student (Admin only)
-router.post("/", verifyToken, isAdmin, async (req, res) => {
-  try {
-    const { name, email, rollNo, department, year, contactNumber, fatherName, motherName } = req.body;
-
-    // Validate GDGU email
-    if (!email.endsWith('@gdgu.org')) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "Only GDGU email addresses are allowed" 
-      });
-    }
-
-    // Check if student already exists
-    const existingStudent = await Student.findOne({ 
-      $or: [{ email }, { rollNo }] 
-    });
-
-    if (existingStudent) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "Student with this email or roll number already exists" 
-      });
-    }
-
-    const student = new Student({
+    const {
       name,
       email,
-      rollNo,
+      password,
+      rollNumber,
       department,
       year,
-      contactNumber,
+      gender,
+      dateOfBirth,
       fatherName,
       motherName,
+      contactNumber,
+      address,
+      photo,
+      collegeIdCard,
+      role = "STUDENT",
+    } = req.body;
+
+    // Basic validation
+    if (!name || !email || !password || !rollNumber) {
+      return res.status(400).json({
+        success: false,
+        message: "Required fields missing",
+      });
+    }
+
+    if (!email.endsWith("@gdgu.org")) {
+      return res.status(400).json({
+        success: false,
+        message: "Only GDGU email allowed",
+      });
+    }
+
+    const existingUser = await User.findOne({
+      $or: [{ email }, { rollNumber }],
     });
 
-    await student.save();
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: "User with email or roll number already exists",
+      });
+    }
 
-    res.status(201).json({ 
-      success: true, 
-      message: "Student added successfully",
-      student 
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const user = await User.create({
+      name,
+      email,
+      password: hashedPassword,
+      rollNumber,
+      department,
+      year,
+      gender,
+      dateOfBirth,
+      fatherName,
+      motherName,
+      contactNumber,
+      address,
+      photo,
+      collegeIdCard,
+      role,
+      isVerified: true, // Admin-created users
+    });
+
+    const responseUser = user.toObject();
+    delete responseUser.password;
+
+    res.status(201).json({
+      success: true,
+      user: responseUser,
     });
   } catch (error) {
-    res.status(400).json({ 
-      success: false, 
-      message: error.message 
+    res.status(500).json({
+      success: false,
+      message: error.message,
     });
   }
-});
+};
 
-// Update student (Admin only)
-router.put("/:id", verifyToken, isAdmin, async (req, res) => {
+/* ============================
+   UPDATE USER (ADMIN)
+============================ */
+export const updateUser = async (req, res) => {
   try {
     const { id } = req.params;
-    const updateData = req.body;
+    const updateData = { ...req.body };
 
-    // Validate GDGU email if provided
-    if (updateData.email && !updateData.email.endsWith('@gdgu.org')) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "Only GDGU email addresses are allowed" 
+    if (updateData.password?.trim()) {
+      updateData.password = await bcrypt.hash(updateData.password, 10);
+    } else {
+      delete updateData.password;
+    }
+
+    const user = await User.findByIdAndUpdate(id, updateData, {
+      new: true,
+      runValidators: true,
+    }).select("-password -verificationToken -resetPasswordToken");
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
       });
     }
 
-    const student = await Student.findByIdAndUpdate(
-      id,
-      updateData,
-      { new: true, runValidators: true }
-    );
-
-    if (!student) {
-      return res.status(404).json({ 
-        success: false, 
-        message: "Student not found" 
-      });
-    }
-
-    res.status(200).json({ 
-      success: true, 
-      message: "Student updated successfully",
-      student 
-    });
+    res.json({ success: true, user });
   } catch (error) {
-    res.status(400).json({ 
-      success: false, 
-      message: error.message 
+    res.status(500).json({
+      success: false,
+      message: error.message,
     });
   }
-});
+};
 
-// Delete student (Admin only)
-router.delete("/:id", verifyToken, isAdmin, async (req, res) => {
+/* ============================
+   DELETE USER (ADMIN)
+============================ */
+export const deleteUser = async (req, res) => {
   try {
     const { id } = req.params;
-    
-    const student = await Student.findByIdAndDelete(id);
 
-    if (!student) {
-      return res.status(404).json({ 
-        success: false, 
-        message: "Student not found" 
+    const user = await User.findByIdAndDelete(id);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
       });
     }
 
-    res.status(200).json({ 
-      success: true, 
-      message: "Student deleted successfully" 
+    res.json({
+      success: true,
+      message: "User deleted successfully",
     });
   } catch (error) {
-    res.status(400).json({ 
-      success: false, 
-      message: error.message 
+    res.status(500).json({
+      success: false,
+      message: error.message,
     });
   }
-});
-
-export default router;
+};
