@@ -9,20 +9,36 @@ import SignUpPage from "./pages/SignUpPage";
 import LoginPage from "./pages/LoginPage";
 import EmailVerificationPage from "./pages/EmailVerificationPage";
 import DashboardPage from "./pages/DashboardPage";
+import AdminPanel from "./pages/AdminPanel";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 
 import { useAuthStore } from "./store/authStore";
 
-// 🔐 Protected Route
+// 🔐 Protected Route for Students
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, user, isCheckingAuth } = useAuthStore();
 
   if (isCheckingAuth) return <LoadingSpinner />;
-
   if (!isAuthenticated) return <Navigate to="/login" replace />;
-
   if (!user?.isVerified) return <Navigate to="/verify-email" replace />;
+
+  // Redirect admin to admin panel
+  if (user?.role === 'ADMIN') return <Navigate to="/admin" replace />;
+
+  return children;
+};
+
+// 🔐 Admin Only Route
+const AdminRoute = ({ children }) => {
+  const { isAuthenticated, user, isCheckingAuth } = useAuthStore();
+
+  if (isCheckingAuth) return <LoadingSpinner />;
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (!user?.isVerified) return <Navigate to="/verify-email" replace />;
+  
+  // Only admins can access
+  if (user?.role !== 'ADMIN') return <Navigate to="/" replace />;
 
   return children;
 };
@@ -33,7 +49,13 @@ const RedirectAuthenticatedUser = ({ children }) => {
 
   if (isCheckingAuth) return <LoadingSpinner />;
 
-  if (isAuthenticated && user?.isVerified) return <Navigate to="/" replace />;
+  if (isAuthenticated && user?.isVerified) {
+    // Redirect based on role
+    if (user?.role === 'ADMIN') {
+      return <Navigate to="/admin" replace />;
+    }
+    return <Navigate to="/" replace />;
+  }
 
   return children;
 };
@@ -52,14 +74,45 @@ function App() {
       <FloatingShape color="bg-lime-500" size="w-32 h-32" top="40%" left="-10%" delay={2} />
 
       <Routes>
-        <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+        {/* Student Dashboard */}
+        <Route 
+          path="/" 
+          element={
+            <ProtectedRoute>
+              <DashboardPage />
+            </ProtectedRoute>
+          } 
+        />
 
-        <Route path="/signup" element={<RedirectAuthenticatedUser><SignUpPage /></RedirectAuthenticatedUser>} />
-        <Route path="/login" element={<RedirectAuthenticatedUser><LoginPage /></RedirectAuthenticatedUser>} />
+        {/* Admin Panel */}
+        <Route 
+          path="/admin" 
+          element={
+            <AdminRoute>
+              <AdminPanel />
+            </AdminRoute>
+          } 
+        />
+
+        {/* Auth Routes */}
+        <Route 
+          path="/signup" 
+          element={
+            <RedirectAuthenticatedUser>
+              <SignUpPage />
+            </RedirectAuthenticatedUser>
+          } 
+        />
+        <Route 
+          path="/login" 
+          element={
+            <RedirectAuthenticatedUser>
+              <LoginPage />
+            </RedirectAuthenticatedUser>
+          } 
+        />
 
         <Route path="/verify-email" element={<EmailVerificationPage />} />
-
-        {/* ✅ FIXED HERE */}
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
 

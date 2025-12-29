@@ -3,7 +3,7 @@ import axios from "axios";
 
 const API_URL = "http://localhost:5000/api/auth";
 
-axios.defaults.withCredentials = true; // send cookies
+axios.defaults.withCredentials = true;
 
 export const useAuthStore = create((set) => ({
   user: null,
@@ -13,12 +13,20 @@ export const useAuthStore = create((set) => ({
   isCheckingAuth: true,
   message: null,
 
-  signup: async (email, password, name) => {
+  signup: async (email, password, fatherName, motherName, contactNumber, photo, collegeIdCard) => {
     set({ isLoading: true, error: null });
     try {
       const response = await axios.post(
         `${API_URL}/signup`,
-        { email, password, name },
+        { 
+          email, 
+          password, 
+          fatherName, 
+          motherName, 
+          contactNumber, 
+          photo, 
+          collegeIdCard 
+        },
         { withCredentials: true }
       );
       set({
@@ -116,9 +124,6 @@ export const useAuthStore = create((set) => ({
         isCheckingAuth: false,
       });
     } catch (error) {
-      // ❌ DO NOT console.error here
-      // This is NORMAL when user is logged out
-
       set({
         user: null,
         isAuthenticated: false,
@@ -126,32 +131,30 @@ export const useAuthStore = create((set) => ({
       });
     }
   },
+
   forgotPassword: async (email) => {
     try {
       set({ isLoading: true });
-
       const res = await axios.post(`${API_URL}/forgot-password`, { email });
-
       set({ isLoading: false });
       return res.data;
     } catch (error) {
       set({ isLoading: false });
-      throw error; // 🔥 VERY IMPORTANT
+      throw error;
     }
   },
+
   resetPassword: async (token, password) => {
     try {
       set({ isLoading: true });
-
       const res = await axios.post(`${API_URL}/reset-password/${token}`, {
         password,
       });
-
       set({ isLoading: false });
       return res.data;
     } catch (error) {
       set({ isLoading: false });
-      throw error; // 🔥 VERY IMPORTANT
+      throw error;
     }
   },
 }));
