@@ -1,6 +1,28 @@
 import { User } from "../models/user.model.js";
 import bcrypt from "bcryptjs";
 
+// backend/routes/student.route.js
+// Fix: Add default export
+
+import express from "express";
+import { verifyToken } from "../middleware/verifyToken.js";
+
+const router = express.Router();
+
+// Your existing student routes here
+// Example routes:
+router.get("/profile", verifyToken, async (req, res) => {
+  try {
+    // Get student profile logic
+    res.json({ success: true, message: "Student profile" });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Add default export
+export default router;
+
 /* ============================
    GET ALL USERS (ADMIN)
 ============================ */
