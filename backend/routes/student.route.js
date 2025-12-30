@@ -1,187 +1,214 @@
-import { User } from "../models/user.model.js";
-import bcrypt from "bcryptjs";
-
-// backend/routes/student.route.js
-// Fix: Add default export
-
 import express from "express";
+import { Student } from "../models/student.model.js";
 import { verifyToken } from "../middleware/verifyToken.js";
+import bcrypt from "bcryptjs";
 
 const router = express.Router();
 
-// Your existing student routes here
-// Example routes:
-router.get("/profile", verifyToken, async (req, res) => {
-  try {
-    // Get student profile logic
-    res.json({ success: true, message: "Student profile" });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-// Add default export
-export default router;
-
-/* ============================
-   GET ALL USERS (ADMIN)
-============================ */
-export const getAllUsers = async (req, res) => {
-  try {
-    const users = await User.find()
-      .select("-password -verificationToken -resetPasswordToken")
-      .sort({ createdAt: -1 });
-
-    res.status(200).json(users);
-  } catch (error) {
-    res.status(500).json({ message: "Server error", error: error.message });
+// Middleware to check if user is admin
+const isAdmin = (req, res, next) => {
+  if (req.user && req.user.role === 'ADMIN') {
+    next();
+  } else {
+    res.status(403).json({ 
+      success: false, 
+      message: 'Access denied. Admin only.' 
+    });
   }
 };
 
-/* ============================
-   CREATE USER (ADMIN)
-============================ */
-export const createUser = async (req, res) => {
+// Get all students (admin only)
+router.get("/", verifyToken, isAdmin, async (req, res) => {
+  try {
+    const students = await Student.find().sort({ createdAt: -1 });
+    res.json(students);
+  } catch (error) {
+    console.error("Error fetching students:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
+
+// Get single student by ID
+router.get("/:id", verifyToken, isAdmin, async (req, res) => {
+  try {
+    const student = await Student.findById(req.params.id);
+    
+    if (!student) {
+      return res.status(404).json({ message: "Student not found" });
+    }
+
+    res.json(student);
+  } catch (error) {
+    console.error("Error fetching student:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
+
+// Add new student (admin only)
+router.post("/", verifyToken, isAdmin, async (req, res) => {
   try {
     const {
       name,
       email,
       password,
-      rollNumber,
+      rollNo,
       department,
       year,
-      gender,
-      dateOfBirth,
       fatherName,
       motherName,
       contactNumber,
       address,
+      dateOfBirth,
+      gender,
       photo,
       collegeIdCard,
-      role = "STUDENT",
     } = req.body;
 
-    // Basic validation
-    if (!name || !email || !password || !rollNumber) {
-      return res.status(400).json({
-        success: false,
-        message: "Required fields missing",
+    // Validation
+    if (!name || !email || !rollNo || !department || !year || !fatherName || !motherName || !contactNumber) {
+      return res.status(400).json({ message: "Please provide all required fields" });
+    }
+
+    // Validate GDGU email
+    if (!email.endsWith('@gdgu.org')) {
+      return res.status(400).json({ 
+        message: 'Only GDGU email addresses (@gdgu.org) are allowed' 
       });
     }
 
-    if (!email.endsWith("@gdgu.org")) {
-      return res.status(400).json({
-        success: false,
-        message: "Only GDGU email allowed",
-      });
-    }
-
-    const existingUser = await User.findOne({
-      $or: [{ email }, { rollNumber }],
+    // Check if student already exists
+    const existingStudent = await Student.findOne({
+      $or: [{ email }, { rollNo }],
     });
 
-    if (existingUser) {
-      return res.status(400).json({
-        success: false,
-        message: "User with email or roll number already exists",
-      });
+    if (existingStudent) {
+      if (existingStudent.email === email) {
+        return res.status(400).json({ message: "Email already exists" });
+      }
+      if (existingStudent.rollNo === rollNo) {
+        return res.status(400).json({ message: "Roll number already exists" });
+      }
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const user = await User.create({
+    // Create new student (password is optional in Student model)
+    const newStudent = new Student({
       name,
       email,
-      password: hashedPassword,
-      rollNumber,
+      rollNo,
       department,
       year,
-      gender,
-      dateOfBirth,
       fatherName,
       motherName,
       contactNumber,
       address,
-      photo,
-      collegeIdCard,
-      role,
-      isVerified: true, // Admin-created users
+      dateOfBirth,
+      gender,
+      photo: photo || '',
+      collegeIdCard: collegeIdCard || '',
+      status: 'ACTIVE',
     });
 
-    const responseUser = user.toObject();
-    delete responseUser.password;
+    await newStudent.save();
 
     res.status(201).json({
-      success: true,
-      user: responseUser,
+      message: "Student added successfully",
+      student: newStudent,
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    console.error("Error adding student:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
-};
+});
 
-/* ============================
-   UPDATE USER (ADMIN)
-============================ */
-export const updateUser = async (req, res) => {
+// Update student (admin only)
+router.put("/:id", verifyToken, isAdmin, async (req, res) => {
   try {
-    const { id } = req.params;
-    const updateData = { ...req.body };
+    const {
+      name,
+      email,
+      rollNo,
+      department,
+      year,
+      fatherName,
+      motherName,
+      contactNumber,
+      address,
+      dateOfBirth,
+      gender,
+      photo,
+      collegeIdCard,
+      status,
+    } = req.body;
 
-    if (updateData.password?.trim()) {
-      updateData.password = await bcrypt.hash(updateData.password, 10);
-    } else {
-      delete updateData.password;
+    const student = await Student.findById(req.params.id);
+    if (!student) {
+      return res.status(404).json({ message: "Student not found" });
     }
 
-    const user = await User.findByIdAndUpdate(id, updateData, {
-      new: true,
-      runValidators: true,
-    }).select("-password -verificationToken -resetPasswordToken");
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-      });
+    // Check if email already exists (excluding current student)
+    if (email && email !== student.email) {
+      if (!email.endsWith('@gdgu.org')) {
+        return res.status(400).json({ 
+          message: 'Only GDGU email addresses (@gdgu.org) are allowed' 
+        });
+      }
+      const emailExists = await Student.findOne({ email });
+      if (emailExists) {
+        return res.status(400).json({ message: "Email already exists" });
+      }
     }
 
-    res.json({ success: true, user });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
-};
-
-/* ============================
-   DELETE USER (ADMIN)
-============================ */
-export const deleteUser = async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const user = await User.findByIdAndDelete(id);
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-      });
+    // Check if rollNo already exists (excluding current student)
+    if (rollNo && rollNo !== student.rollNo) {
+      const rollNoExists = await Student.findOne({ rollNo });
+      if (rollNoExists) {
+        return res.status(400).json({ message: "Roll number already exists" });
+      }
     }
+
+    // Update fields
+    if (name) student.name = name;
+    if (email) student.email = email;
+    if (rollNo) student.rollNo = rollNo;
+    if (department) student.department = department;
+    if (year) student.year = year;
+    if (fatherName) student.fatherName = fatherName;
+    if (motherName) student.motherName = motherName;
+    if (contactNumber) student.contactNumber = contactNumber;
+    if (address !== undefined) student.address = address;
+    if (dateOfBirth !== undefined) student.dateOfBirth = dateOfBirth;
+    if (gender !== undefined) student.gender = gender;
+    if (photo !== undefined) student.photo = photo;
+    if (collegeIdCard !== undefined) student.collegeIdCard = collegeIdCard;
+    if (status) student.status = status;
+
+    await student.save();
 
     res.json({
-      success: true,
-      message: "User deleted successfully",
+      message: "Student updated successfully",
+      student,
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    console.error("Error updating student:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
-};
+});
+
+// Delete student (admin only)
+router.delete("/:id", verifyToken, isAdmin, async (req, res) => {
+  try {
+    const student = await Student.findById(req.params.id);
+    if (!student) {
+      return res.status(404).json({ message: "Student not found" });
+    }
+
+    await Student.findByIdAndDelete(req.params.id);
+
+    res.json({ message: "Student deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting student:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
+
+export default router;

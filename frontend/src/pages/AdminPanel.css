@@ -279,3 +279,25 @@ textarea.form-input {
 }
 
 
+.status-badge {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status-badge.active {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.status-badge.inactive {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.status-badge.suspended {
+  background-color: #fff3cd;
+  color: #856404;
+}

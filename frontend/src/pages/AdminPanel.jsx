@@ -8,7 +8,6 @@ export default function AdminPanel() {
   const [form, setForm] = useState({
     name: "",
     email: "",
-    password: "",
     rollNo: "",
     department: "",
     year: "",
@@ -20,7 +19,6 @@ export default function AdminPanel() {
     gender: "",
   });
   const [editId, setEditId] = useState(null);
-  const [showPassword, setShowPassword] = useState(false);
 
   // Fetch all students from backend
   const fetchStudents = async () => {
@@ -52,21 +50,17 @@ export default function AdminPanel() {
       return;
     }
 
-    // Password required only for new student
-    if (!editId && !form.password) {
-      alert("Password is required for new student");
+    // Validate email
+    if (!form.email.endsWith('@gdgu.org')) {
+      alert("Email must be a valid GDGU email (@gdgu.org)");
       return;
     }
 
     setLoading(true);
     try {
       if (editId) {
-        // Update student - don't send password if empty
-        const updateData = { ...form };
-        if (!updateData.password) {
-          delete updateData.password;
-        }
-        await axios.put(`http://localhost:5000/api/students/${editId}`, updateData, {
+        // Update student
+        await axios.put(`http://localhost:5000/api/students/${editId}`, form, {
           withCredentials: true,
         });
         alert("Student updated successfully!");
@@ -81,7 +75,6 @@ export default function AdminPanel() {
       setForm({ 
         name: "", 
         email: "", 
-        password: "",
         rollNo: "", 
         department: "", 
         year: "",
@@ -127,7 +120,6 @@ export default function AdminPanel() {
     setForm({
       name: student.name || "",
       email: student.email || "",
-      password: "", // Don't populate password for security
       rollNo: student.rollNo || "",
       department: student.department || "",
       year: student.year || "",
@@ -148,7 +140,6 @@ export default function AdminPanel() {
     setForm({ 
       name: "", 
       email: "", 
-      password: "",
       rollNo: "", 
       department: "", 
       year: "",
@@ -201,29 +192,12 @@ export default function AdminPanel() {
               />
               <input
                 type="email"
-                placeholder="Email *"
+                placeholder="Email (@gdgu.org) *"
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
                 className="form-input"
                 required
               />
-              <div className="password-field">
-                <input
-                  type={showPassword ? "text" : "password"}
-                  placeholder={editId ? "Password (leave blank to keep current)" : "Password *"}
-                  value={form.password}
-                  onChange={(e) => setForm({ ...form, password: e.target.value })}
-                  className="form-input"
-                  required={!editId}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="toggle-password"
-                >
-                  {showPassword ? "👁️" : "👁️‍🗨️"}
-                </button>
-              </div>
               <input
                 type="date"
                 placeholder="Date of Birth"
@@ -345,6 +319,7 @@ export default function AdminPanel() {
                   <th>Contact</th>
                   <th>Father's Name</th>
                   <th>Mother's Name</th>
+                  <th>Status</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -359,6 +334,11 @@ export default function AdminPanel() {
                     <td>{s.contactNumber}</td>
                     <td>{s.fatherName}</td>
                     <td>{s.motherName}</td>
+                    <td>
+                      <span className={`status-badge ${s.status?.toLowerCase()}`}>
+                        {s.status || 'ACTIVE'}
+                      </span>
+                    </td>
                     <td className="action-buttons">
                       <button className="btn edit-btn" onClick={() => edit(s)} title="Edit">
                         ✏️
