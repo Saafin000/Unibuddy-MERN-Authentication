@@ -27,6 +27,11 @@ app.use("/api/students", studentRoutes);
 // Add this with your other routes
 app.use('/api/users', userRoutes);
 
+app.get("/", (req, res) => {
+  res.send("UniBuddy Backend is Live 🚀");
+});
+
+
 app.listen(PORT, () => {
   connectDB();
   console.log("Server is running on port no: ", PORT);
