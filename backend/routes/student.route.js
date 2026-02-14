@@ -47,6 +47,8 @@ router.get("/:id", verifyToken, isAdmin, async (req, res) => {
 // Add new student (admin only)
 router.post("/", verifyToken, isAdmin, async (req, res) => {
   try {
+    console.log("Received student data:", req.body); // Debug log
+
     const {
       name,
       email,
@@ -62,15 +64,18 @@ router.post("/", verifyToken, isAdmin, async (req, res) => {
       gender,
       photo,
       collegeIdCard,
+      status,
     } = req.body;
 
     // Validation
     if (!name || !email || !rollNo || !department || !year || !fatherName || !motherName || !contactNumber) {
+      console.log("Validation failed - missing fields");
       return res.status(400).json({ message: "Please provide all required fields" });
     }
 
     // Validate GDGU email
     if (!email.endsWith('@gdgu.org')) {
+      console.log("Validation failed - invalid email");
       return res.status(400).json({ 
         message: 'Only GDGU email addresses (@gdgu.org) are allowed' 
       });
@@ -82,6 +87,7 @@ router.post("/", verifyToken, isAdmin, async (req, res) => {
     });
 
     if (existingStudent) {
+      console.log("Student already exists:", existingStudent.email || existingStudent.rollNo);
       if (existingStudent.email === email) {
         return res.status(400).json({ message: "Email already exists" });
       }
@@ -90,7 +96,7 @@ router.post("/", verifyToken, isAdmin, async (req, res) => {
       }
     }
 
-    // Create new student (password is optional in Student model)
+    // Create new student
     const newStudent = new Student({
       name,
       email,
@@ -100,15 +106,17 @@ router.post("/", verifyToken, isAdmin, async (req, res) => {
       fatherName,
       motherName,
       contactNumber,
-      address,
-      dateOfBirth,
-      gender,
-      photo: photo || '',
-      collegeIdCard: collegeIdCard || '',
-      status: 'ACTIVE',
+      address: address || "",
+      dateOfBirth: dateOfBirth && dateOfBirth.trim() !== "" ? dateOfBirth : undefined,
+      gender: gender || "",
+      photo: photo || "",
+      collegeIdCard: collegeIdCard || "",
+      status: status || 'ACTIVE',
     });
 
+    console.log("Attempting to save student:", newStudent);
     await newStudent.save();
+    console.log("Student saved successfully:", newStudent._id);
 
     res.status(201).json({
       message: "Student added successfully",
@@ -116,10 +124,17 @@ router.post("/", verifyToken, isAdmin, async (req, res) => {
     });
   } catch (error) {
     console.error("Error adding student:", error);
-    res.status(500).json({ message: "Server error", error: error.message });
+    console.error("Error stack:", error.stack);
+    res.status(500).json({ 
+      message: "Server error", 
+      error: error.message,
+      details: error.errors ? Object.keys(error.errors).map(key => ({
+        field: key,
+        message: error.errors[key].message
+      })) : null
+    });
   }
 });
-
 // Update student (admin only)
 router.put("/:id", verifyToken, isAdmin, async (req, res) => {
   try {
@@ -176,7 +191,9 @@ router.put("/:id", verifyToken, isAdmin, async (req, res) => {
     if (motherName) student.motherName = motherName;
     if (contactNumber) student.contactNumber = contactNumber;
     if (address !== undefined) student.address = address;
-    if (dateOfBirth !== undefined) student.dateOfBirth = dateOfBirth;
+    if (dateOfBirth !== undefined) {
+      student.dateOfBirth = dateOfBirth && dateOfBirth.trim() !== "" ? dateOfBirth : undefined;
+    }
     if (gender !== undefined) student.gender = gender;
     if (photo !== undefined) student.photo = photo;
     if (collegeIdCard !== undefined) student.collegeIdCard = collegeIdCard;

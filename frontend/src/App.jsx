@@ -12,8 +12,12 @@ import DashboardPage from "./pages/DashboardPage";
 import AdminPanel from "./pages/AdminPanel";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
+import LandingPage from "./pages/LandingPage";
+import DemoPage from "./pages/DemoPage";
 
 import { useAuthStore } from "./store/authStore";
+import { AuthModalProvider } from "./context/AuthModalContext";
+import AuthModalManager from "./components/AuthModalManager";
 
 // 🔐 Protected Route for Students
 const ProtectedRoute = ({ children }) => {
@@ -54,7 +58,7 @@ const RedirectAuthenticatedUser = ({ children }) => {
     if (user?.role === 'ADMIN') {
       return <Navigate to="/admin" replace />;
     }
-    return <Navigate to="/" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   return children;
@@ -68,59 +72,89 @@ function App() {
   }, [checkAuth]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-green-900 to-emerald-900 flex items-center justify-center relative overflow-hidden">
-      <FloatingShape color="bg-green-500" size="w-64 h-64" top="-5%" left="10%" delay={0} />
-      <FloatingShape color="bg-emerald-500" size="w-48 h-48" top="70%" left="80%" delay={5} />
-      <FloatingShape color="bg-lime-500" size="w-32 h-32" top="40%" left="-10%" delay={2} />
+    <AuthModalProvider>
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center relative overflow-hidden">
+        <FloatingShape color="bg-blue-600/20" size="w-64 h-64" top="-5%" left="10%" delay={0} />
+        <FloatingShape color="bg-purple-600/20" size="w-48 h-48" top="70%" left="80%" delay={5} />
+        <FloatingShape color="bg-indigo-600/20" size="w-32 h-32" top="40%" left="-10%" delay={2} />
 
-      <Routes>
-        {/* Student Dashboard */}
-        <Route 
-          path="/" 
-          element={
-            <ProtectedRoute>
-              <DashboardPage />
-            </ProtectedRoute>
-          } 
-        />
+        <Routes>
+          {/* Landing Page - Public */}
+          <Route 
+            path="/" 
+            element={
+              <RedirectAuthenticatedUser>
+                <LandingPage />
+              </RedirectAuthenticatedUser>
+            } 
+          />
 
-        {/* Admin Panel */}
-        <Route 
-          path="/admin" 
-          element={
-            <AdminRoute>
-              <AdminPanel />
-            </AdminRoute>
-          } 
-        />
+          {/* Demo Page - Public (shows the new UI features) */}
+          <Route 
+            path="/demo" 
+            element={
+              <RedirectAuthenticatedUser>
+                <DemoPage />
+              </RedirectAuthenticatedUser>
+            } 
+          />
 
-        {/* Auth Routes */}
-        <Route 
-          path="/signup" 
-          element={
-            <RedirectAuthenticatedUser>
-              <SignUpPage />
-            </RedirectAuthenticatedUser>
-          } 
-        />
-        <Route 
-          path="/login" 
-          element={
-            <RedirectAuthenticatedUser>
-              <LoginPage />
-            </RedirectAuthenticatedUser>
-          } 
-        />
+          {/* Student Dashboard */}
+          <Route 
+            path="/dashboard" 
+            element={
+              <ProtectedRoute>
+                <DashboardPage />
+              </ProtectedRoute>
+            } 
+          />
 
-        <Route path="/verify-email" element={<EmailVerificationPage />} />
-        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-        <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
+          {/* Admin Panel */}
+          <Route 
+            path="/admin" 
+            element={
+              <AdminRoute>
+                <AdminPanel />
+              </AdminRoute>
+            } 
+          />
 
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+          {/* Auth Routes - Keep for direct URL access */}
+          <Route 
+            path="/signup" 
+            element={
+              <RedirectAuthenticatedUser>
+                <SignUpPage isModal={false} />
+              </RedirectAuthenticatedUser>
+            } 
+          />
+          <Route 
+            path="/login" 
+            element={
+              <RedirectAuthenticatedUser>
+                <LoginPage isModal={false} />
+              </RedirectAuthenticatedUser>
+            } 
+          />
 
-      <Toaster />
-    </div>
+          <Route path="/verify-email" element={<EmailVerificationPage />} />
+          <Route 
+            path="/forgot-password" 
+            element={
+              <ForgotPasswordPage isModal={false} />
+            } 
+          />
+          <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
+
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+
+        {/* Modal Manager - Renders modals globally */}
+        <AuthModalManager />
+
+        <Toaster />
+      </div>
+    </AuthModalProvider>
   );
 }
 
